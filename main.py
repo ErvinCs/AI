@@ -1,33 +1,45 @@
 from src.Network import Network
-from src.FileIO import FileIO
 
-LEANING_ENTRIES = 4500
+LEARN_INDEX = 85
+LEARN_RATE = 0.000001
+
+def getData(filename):
+    with open(filename) as f:
+        data = f.readlines()
+    learnData = []
+    testData = []
+
+    lines = [line.rstrip('\n') for line in data]
+    for line in lines[:LEARN_INDEX]:
+        tokens = line.split(',')
+        newLine = []
+        for i in range(0, len(tokens)):
+            newLine.append(float(tokens[i]))
+        learnData.append(newLine)
+
+    for line in lines[84:]:
+        tokens = line.split(',')
+        newLine = []
+        for i in range(0, len(tokens)):
+            newLine.append(float(tokens[i]))
+        testData.append(newLine)
+
+    return (learnData, testData)
 
 if __name__ == '__main__':
     '''
-    P3.Establish the moving direction of a robot (forward, slight turn to left,
-    slight turn to right, strong turn to left, strong turn to right) based on the collected
-    data from the sensors.
-    The training data is composed from previous such decisions (informations from 24
-    sensors from the robot). The sensor position is given by the deviation angle:
-    180 (front), 165, 150, ..., 15, 0 (back), 15, 30, ...., 150, 165.
+    P1.Build a system that approximates the quality of a concrete mixture
+    based on the used ingredients.
+    Input variables: 7
+    Output variables: 3
     '''
-    reader = FileIO("input2.data", "input4.data", "input24.data")
-    (inData, outData) = reader.readFile(24)
+    learnData, testData = getData("C:\\_MyFiles\\_FMI\\Workspace\\AI\\Lab5\\files\\data.data")
 
-    learnIn = inData[:LEANING_ENTRIES]
-    learnOut = outData[:LEANING_ENTRIES]
+    net = Network(7, 3, [4])
 
-    testIn = inData[LEANING_ENTRIES:]
-    testOut = outData[LEANING_ENTRIES:]
-
-    noExamples = len(inData)
-    noFeatures = len(inData[0])
-
-    reader.normaliseData(noExamples, noFeatures, inData)
-    noOutputs = 4
-    network = Network(noFeatures, noOutputs, 2, 10)
-
-    network.learning(learnIn, learnOut)
-    err = network.run(testIn, testOut)
-    print("Error:" + str(err))
+    net.learn(LEARN_RATE, learnData)
+    err = net.run(testData)
+    err[0] = int(err[0])
+    err[1] = int(err[1])
+    err[2] = int(err[2])
+    print('\nSLUMP, FLOW, 28-day Compressive Strength = ' + str(err))

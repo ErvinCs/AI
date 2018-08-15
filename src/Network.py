@@ -1,125 +1,89 @@
 from src.Layer import Layer
-from math import *
-
-LEARN_RATE = 0.01
-EPOCH_LIMIT = 100
-VALID = 0.05
+from copy import deepcopy
 
 class Network:
-    def __init__(self, m=0, r=0, p=0, h=0):
+    def __init__(self, m, r, h):
         '''
         :param m: number of input nodes (attributes)
         :param r: number of output nodes (results)
-        :param p: number of hidden layers
-        :param h: size of hidden layers
-        Classification problem
+        :param h: number of hidden layers
         '''
-        self.noInputs = m
-        self.noOutputs = r
-        self.noHiddenLayers = p
-        self.noNeuronsPerHiddenLayer = h
-        self.layers = [Layer(self.noInputs,0)]
-        self.layers += [Layer(self.noNeuronsPerHiddenLayer, self.noInputs)]
-        self.layers += [Layer(self.noNeuronsPerHiddenLayer,
-                              self.noNeuronsPerHiddenLayer) for k in range(self.noHiddenLayers - 1)]
-        self.layers += [Layer(self.noOutputs,self.noNeuronsPerHiddenLayer)]
+        self.structure = [m] + h + [r]
+        self.layers = [Layer(m, 1)]
+        for i in range(1, len(self.structure)):
+            self.layers.append(Layer(self.structure[i], self.structure[i - 1]))
 
     def activate(self, inputs):
         '''
         Calculate the output of each neuron
         '''
-        i = 0
-        for n in self.layers[0].neurons:
-            n.output = inputs[i]    #initial inputs
-            i += 1
-        for l in range(1, self.noHiddenLayers + 2):
-            for n in self.layers[l].neurons:
-                info = []
-                for i in range(n.noInputs):
-                    info.append(self.layers[l-1].neurons[i].output)
-                n.activate(info)
+        list = []
+        for i in range(self.structure[0]):
+            self.layers[0].neuronList[i].setOutput(inputs)  #initial inputs
+            list.append(self.layers[0].neuronList[i].out)
+        for j in range(1, len(self.structure)):  #iterate trough the hidden layers
+            aux = []
+            for i in range(self.structure[j]):
+                self.layers[j].neuronList[i].setOutput(list)
+                aux.append(self.layers[j].neuronList[i].out)
+            list = deepcopy(aux)
 
-    def errorBackpropagate(self, err):
+    def errorBackPropagation(self, err, learnRate, initInput):
         '''
-        For each data sample establish and backward propagate the error
-        Establish the errors of neurons from the output layer
+        For each data sample establish and backward propagate the error.
+        Re-adjut the weights
         '''
-        for layerCount in range(self.noHiddenLayers+1, 0, -1): #start from "top" layer
-            i = 0
-            for n1 in self.layers[layerCount].neurons:
-                if(layerCount == self.noHiddenLayers + 1):
-                    n1.setErr(err[i] - n1.output)
-                else:
-                    sumErr = 0.0
-                    for n2 in self.layers[layerCount+1].neurons:
-                        sumErr += n2.weights[i] * n2.err
-                    n1.setErrSigmoidal(sumErr)
-                for j in range(n1.noInputs):
-                    netWeight = n1.weights[j] + LEARN_RATE * n1.err * self.layers[layerCount-1].neurons[j].output
-                    n1.weights[j] = netWeight
-                i += 1
+        for i in range(len(self.structure) - 1, -1, -1):  #start from "top" layer
+            if i == len(self.structure) - 1:
+                for j in range(self.structure[i]):
+                    self.layers[i].neuronList[j].setError(err[j])   #calculate errors
+            else:
+                for j in range(self.structure[i]):
+                    delta = 0
+                    for k in range(self.structure[i + 1]):
+                        delta += self.layers[i + 1].neuronList[k].error * self.layers[i + 1].neuronList[k].w[j]
+                    self.layers[i].neuronList[j].setError(delta)
 
-    def errorComputationClassification(self, target, noLabels):
-        '''
-        Convert the single value (analog) into a set of values (softmax); softmax values sum is 1
-        '''
-        transfOutputs = []
-        maxx = self.layers[self.noHiddenLayers + 1].neurons[0].output
-        for i in range(noLabels):
-            if(self.layers[self.noHiddenLayers + 1].neurons[i].output > maxx):
-                maxx = self.layers[self.noHiddenLayers + 1].neurons[i].output
-        sumExp = 0.0
-        for i in range(noLabels):
-            sumExp += exp(self.layers[self.noHiddenLayers + 1].neurons[i].output - maxx)
-        for i in range(noLabels):
-            transfOutputs.append(exp(self.layers[self.noHiddenLayers + 1].neurons[i].output - maxx)/sumExp)
-        maxx = transfOutputs[0]
-        computedlabel = 0
-        for i in range(noLabels):
-            if(transfOutputs[i] > maxx):
-                maxx = transfOutputs[i]
-                computedlabel = i
-        if(target == computedlabel):
-            return 0
-        else:
-            return 1
+        for i in range(len(self.structure)):    #adjust weights
+            if i == 0:
+                for j in range(self.structure[0]):
+                    self.layers[0].neuronList[j].w[0] -= initInput[j] * learnRate * self.layers[0].neuronList[j].error
+            else:
+                for j in range(self.structure[i]):
+                    for k in range(self.structure[i - 1]):
+                        self.layers[i].neuronList[j].w[k] -= self.layers[i - 1].neuronList[k].out * learnRate * self.layers[i].neuronList[j].error
 
-    def checkGlobalErr(self, err):
+    def learn(self, learnRate, inputData):
         '''
-        :return: true if the error is negligible; false otherwise
-        '''
-        correct = sum(err)
-        error = correct / len(err)
-        if error < VALID:
-            return True
-        else:
-            return False
-
-    def learning(self, inData, outData):
-        '''
-        Activate all the neurons and forward propagate their results.
+        Activate all the neurons.
         Backward propagate the error
         '''
-        stopCondition = False
-        epoch = 0
-        globalErr = []
-        while ((not stopCondition) and (epoch < EPOCH_LIMIT)):
-            globalErr = []
-            for d in range(len(inData)):
-                self.activate(inData[d])
-                err = [0 for x in range(4)]
-                err[outData[d]] = 1
-                globalErr.append(self.errorComputationClassification(outData[d], len(self.layers[self.noHiddenLayers + 1].neurons))) #4
-                self.errorBackpropagate(err)
+        error = [100, 100, 100]
+        i = 1
+        while (abs(error[0]) > 10):
+            for line in inputData:
+                input = line[:7]
+                self.activate(input)
 
-            print("Iteration#" + str(epoch) + "\nGlobal Error: " + str(sum(globalErr)) + "\n")
-            stopCondition = self.checkGlobalErr(globalErr)
-            epoch += 1
+                error = []
+                error.append(float(self.layers[2].neuronList[0].out) - line[7])
+                error.append(float(self.layers[2].neuronList[1].out) - line[8])
+                error.append(float(self.layers[2].neuronList[2].out) - line[9])
 
+                self.errorBackPropagation(error, learnRate, input)
+                print('Iteration#' + str(i) + ' = ' + str(error))
+                i += 1
 
-    def run(self, inData, outData):
-        globalErr = []
-        for d in range(0, len(inData)):
-            self.activate(inData[d])
-            globalErr.append(self.errorComputationClassification(outData[d], 2))
-        return sum(globalErr)
+    def run(self, inputData):
+        error = [100, 100, 100]
+        globalErr = [0, 0, 0]
+        for line in inputData:
+            initial_input = line[:7]
+            self.activate(initial_input)
+            error = []
+            error.append(float(self.layers[2].neuronList[0].out) - line[7])
+            error.append(float(self.layers[2].neuronList[1].out) - line[8])
+            error.append(float(self.layers[2].neuronList[2].out) - line[9])
+            for i in range(3):
+                globalErr[i] += error[i]
+        return globalErr

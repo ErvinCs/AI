@@ -8,4 +8,5 @@ class Layer:
         :param noInputs: the number of synapses
         '''
         self.noNeurons = noNeurons
-        self.neurons=[Neuron(noInputs) for k in range(self.noNeurons)]
+        self.noInputs = noInputs
+        self.neuronList = [Neuron(noInputs) for n in range(self.noNeurons)]
