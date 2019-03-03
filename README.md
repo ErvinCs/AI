@@ -3,7 +3,7 @@
 An optimized DFS algorithm for solving given sudoku problems.
 ### Problem2 - EA & ACO <br/>
 Builds the highest possible tower with the given cubes/blocks such that no 2 levels have the same color. <br/>
-An implementation of a standard evolutionary algorithm and one of the ant colony optimization. 
+An implementation of a standard evolutionary algorithm and one of the ant colony optimization. <br/>
 Uses: swap mutation, order crossover, tournament selection, ranking selection
 ### Problem3 - ANN Robot <br/>
 Trains a 24-sensor (15 degrees apart) robot to navigate without colliding with any obstacles in a 2D area.
