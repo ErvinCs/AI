@@ -9,3 +9,10 @@ Uses: swap mutation, order crossover, tournament selection, ranking selection
 Trains a 24-sensor (15 degrees apart) robot to navigate without colliding with any obstacles in a 2D area.
 ### Problem4 - ANN Mixture Quality <br/>
 Approximates the quality of a concrete mixture (3 criterias) based on 7-tuple inputs.
+**Learned:**
+* Representing Search Problems
+* Informed & Uninformed Search Strategies
+* Hill Climbing
+* Evolutionary Algorithms - PSO & ACO
+* Artificial Neural Networks
+* Rule-based Systems
